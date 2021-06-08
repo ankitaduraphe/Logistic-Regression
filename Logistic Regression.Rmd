@@ -1,0 +1,737 @@
+---
+title: "Logistic Regression"
+author: "18BCE1104 - Ankita Duraphe"
+date: "25/02/2021"
+output:
+  word_document: default
+  html_document:
+    fig_height: 4
+    highlight: pygments
+    theme: spacelab
+  pdf_document: default
+---
+
+### Logistic Regression on Smarket dataset
+
+* * *
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+rm(list = ls())
+```
+
+* * *
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+library(ISLR)
+```
+
+* * *
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+names(Smarket)
+dim(Smarket)
+summary(Smarket)
+?Smarket
+str(Smarket)
+```
+
+* * *
+plot with pairs fn
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+pairs(Smarket,col=Smarket$Direction)
+```
+
+* * *
+data analysis - Histogram plot
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+par(mar = rep(2, 4)) #To reduce the size of the margins
+par(mfrow=c(1,8))   
+for(i in 1:8) {
+  hist(Smarket[,i], main=names(Smarket)[i])
+}
+```
+
+* * *
+box plot
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+par(mar = rep(2, 4)) #To reduce the size of the margins
+par(mfrow=c(1,8))   
+for(i in 1:8) {
+  boxplot(Smarket[,i], main=names(Smarket)[i])
+}
+# cor(Smarket[,-9])
+```
+
+* * *
+to find correlation between every variable
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+library(corrplot)
+correlations <- cor(Smarket[,1:8])
+corrplot(correlations, method="circle")
+attach(Smarket)
+```
+
+* * *
+Logistic Regression glm = Generalised linear models
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+glm.fits=glm(Direction~Lag1+Lag2+Lag3+Lag4+Lag5+Volume,data=Smarket,family=binomial)
+summary(glm.fits)
+coef(glm.fits)
+summary(glm.fits)$coef
+summary(glm.fits)$coef[,4]
+glm.probs=predict(glm.fits,type="response")
+glm.probs[1:10]
+glm.pred=rep("Down",1250)
+glm.pred[glm.probs>.5]="Up"
+table(glm.pred,Direction)
+(507+145)/1250
+mean(glm.pred==Direction)
+train=(Year<2005)
+Smarket.2005=Smarket[!train,]
+dim(Smarket.2005)
+Direction.2005=Direction[!train]
+glm.fits=glm(Direction~Lag1+Lag2+Lag3+Lag4+Lag5+Volume,data=Smarket,family=binomial,subset=train)
+glm.probs=predict(glm.fits,Smarket.2005,type="response")
+glm.pred=rep("Down",252)
+glm.pred[glm.probs>.5]="Up"
+```
+
+* * *
+other way
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+glm.pred=ifelse(glm.probs==.5, "Up", "Down")
+table(glm.pred,Direction.2005)
+mean(glm.pred==Direction.2005)
+mean(glm.pred!=Direction.2005)
+```
+
+* * *
+fit with two predictor variables
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+glm.fits=glm(Direction~Lag1+Lag2,data=Smarket,family=binomial,subset=train)
+glm.probs=predict(glm.fits,Smarket.2005,type="response")
+glm.pred=rep("Down",252)
+glm.pred[glm.probs>.5]="Up"
+table(glm.pred,Direction.2005)
+mean(glm.pred==Direction.2005)
+106/(106+76)
+```
+
+* * *
+predict with a sample data
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+predict(glm.fits,newdata=data.frame(Lag1=c(1.2,1.5),Lag2=c(1.1,-0.8)),type="response")
+```
+
+### Logistic Regression on Admission Predict dataset 
+
+* * *
+Removing previously loaded objects from the environment
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+rm(list = ls())
+```
+
+* * *
+Loading the required packages
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+library(tidyverse)
+library(plotly)
+library(GGally)
+library(ggplot2)
+library(readr)
+library(dplyr)
+```
+
+* * *
+Importing the dataset
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+data <- read.csv("Admission_Predict.csv")
+```
+The dataset contains several parameters which are considered important during the application for Masters Programs. \
+
+The parameters included are as follows: \
+1. GRE Scores (out of 340) \
+2. TOEFL Scores (out of 120) \
+3. University Rating (out of 5) \
+4. Statement of Purpose / SOP (out of 5) \
+5. Letter of Recommendation Strength / LOR (out of 5) \
+6. Undergraduate GPA (out of 10) \
+7. Research Experience (either 0 or 1) \
+8. Chance of Admit (ranging from 0 to 1) \
+
+* * *
+Inspecting the dataset
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+names(data)
+dim(data)
+summary(data)
+View(data)
+str(data)
+```
+
+* * *
+Checking for missing values, if any, for the given dataset
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+data %>% 
+  is.na() %>% 
+  colSums(is.na(data))
+```
+
+* * *
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+data_new <- data %>% 
+  mutate(Label.of.Admit = Chance.of.Admit)
+head(data_new)
+```
+
+* * *
+The variable Chance.of.Admit is excluded from predictor variable due to correlationship with variable Label.of.Admit.
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+data_new <- data_new %>% 
+  select(-Chance.of.Admit)
+head(data_new)
+```
+
+* * *
+The variable Label.of.Admit is divided into category “1” (admitted) and “0” (not admitted).
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+data_new$Label.of.Admit <- ifelse(data_new$Label.of.Admit > 0.5, "1", "0")
+head(data_new)
+```
+
+* * *
+Inspecting the new dataset
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+names(data_new)
+dim(data_new)
+summary(data_new)
+View(data_new)
+str(data_new)
+```
+
+* * *
+Converting the response variable datatype from chr to factor
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+data_new$Label.of.Admit <- as.factor(data_new$Label.of.Admit)
+```
+
+* * *
+Again inspecting the new dataset
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+names(data_new)
+dim(data_new)
+summary(data_new)
+View(data_new)
+str(data_new)
+```
+
+* * *
+Checking for missing values, if any, for the new dataset
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+data_new %>% 
+  is.na() %>% 
+  colSums(is.na(data_new))
+```
+
+* * *
+Plot with pairs fn
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+pairs(data_new,col=data_new$Label.of.Admit)
+```
+
+* * *
+Data analysis: Histogram plot
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+par(mar = rep(2, 4)) #To reduce the size of the margins
+par(mfrow=c(1,8))   
+for(i in 1:8) {
+  hist(data_new[,i], main=names(data_new)[i])
+}
+```
+
+* * *
+Data analysis: Box plot
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+par(mar = rep(2, 4)) #To reduce the size of the margins
+par(mfrow=c(1,8))
+for(i in 1:8) {
+  boxplot(data_new[,i], main=names(data_new)[i])
+}
+# cor(data_new[,-9])
+```
+
+* * *
+To find correlation between every variable
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+library(corrplot)
+correlations <- cor(data_new[,1:8])
+corrplot(correlations, method="circle")
+attach(data_new)
+```
+
+* * *
+Logistic Regression glm = Generalised linear models
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+glm.fits=glm(Label.of.Admit~GRE.Score+TOEFL.Score+University.Rating+SOP+LOR+CGPA+Research,data=data_new,family=binomial)
+summary(glm.fits)
+coef(glm.fits)
+summary(glm.fits)$coef
+summary(glm.fits)$coef[,4]
+glm.probs=predict(glm.fits,type="response")
+glm.probs[1:10]
+glm.pred=rep("0",400)
+glm.pred[glm.probs>.5]="1"
+table(glm.pred,Label.of.Admit)
+(17+361)/400 #Calculated from the Confusion Matrix
+mean(glm.pred==Label.of.Admit)
+train=(Serial.No.<320)
+data_new.320=data_new[!train,]
+dim(data_new.320)
+Label.of.Admit.320=Label.of.Admit[!train]
+glm.fits=glm(Label.of.Admit~GRE.Score+TOEFL.Score+University.Rating+SOP+LOR+CGPA+Research,data=data_new,family=binomial,subset=train) #Going to eliminate the variables that has little value, - GRE.Score, TOEFL.Score and Research.
+glm.probs=predict(glm.fits,data_new.320,type="response")
+glm.pred=rep("0",81) 
+glm.pred[glm.probs>.5]="1" 
+```
+
+* * *
+Aliter
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+glm.pred=ifelse(glm.probs==.5, "1", "0")
+table(glm.pred,Label.of.Admit.320)
+mean(glm.pred==Label.of.Admit.320)
+mean(glm.pred!=Label.of.Admit.320)
+```
+
+* * * 
+Fit with four predictor variables
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+glm.fits=glm(Label.of.Admit~University.Rating+SOP+LOR+CGPA,data=data_new,family=binomial,subset=train) #Going to eliminate the variables that has little value, - GRE.Score, TOEFL.Score and Research.
+glm.probs=predict(glm.fits,data_new.320,type="response")
+glm.pred=rep("0",81)
+glm.pred[glm.probs>.5]="1"
+table(glm.pred,Label.of.Admit.320)
+mean(glm.pred==Label.of.Admit.320)
+68/(68+7) #Calculated from the Confusion Matrix
+
+```
+
+* * *
+Predict with a sample data
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+predict(glm.fits,newdata=data.frame(University.Rating=c(4,5,5,5),SOP=c(4,5,5,4),LOR=c(3.5,4.5,5,4.5),CGPA=c(9.8,9.78,9.76,9.76)),type="response")
+```
+
+### Logistic Regression on binary_Admit dataset 
+
+* * *
+Removing previously loaded objects from the environment
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+rm(list = ls())
+```
+
+* * *
+Loading the required packages
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+library(tidyverse)
+library(plotly)
+library(GGally)
+library(ggplot2)
+library(readr)
+library(dplyr)
+```
+
+* * *
+Importing the dataset
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+data <- read.csv("binary_Admit.csv")
+```
+
+* * *
+Inspecting the dataset
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+names(data)
+dim(data)
+summary(data)
+View(data)
+str(data)
+```
+
+* * *
+Checking for missing values, if any, for the given dataset
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+data %>% 
+  is.na() %>% 
+  colSums(is.na(data))
+```
+
+* * *
+Converting the response variable datatype from int to factor
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+#data$admit <- as.factor(data$admit)
+```
+
+* * *
+Again inspecting the new dataset
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+names(data)
+dim(data)
+summary(data)
+View(data)
+str(data)
+```
+
+* * *
+Plot with pairs fn
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+pairs(data,col=data$admit)
+```
+
+* * *
+Data analysis: Histogram plot
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+par(mar = rep(2, 4)) #To reduce the size of the margins
+par(mfrow=c(1,4))
+for(i in 1:4) {
+  hist(data[,i], main=names(data)[i])
+}
+```
+
+* * *
+Data analysis: Box plot
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+par(mar = rep(2, 4)) #To reduce the size of the margins
+par(mfrow=c(1,4))
+for(i in 1:4) {
+  boxplot(data[,i], main=names(data)[i])
+}
+# cor(data[,-1])
+```
+
+* * *
+To find correlation between every variable
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+library(corrplot)
+correlations <- cor(data[,1:4])
+corrplot(correlations, method="circle")
+attach(data)
+```
+
+* * *
+Logistic Regression glm = Generalised linear models
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+glm.fits=glm(admit~gre+gpa+rank,data=data,family=binomial)
+summary(glm.fits)
+coef(glm.fits)
+summary(glm.fits)$coef
+summary(glm.fits)$coef[,4]
+glm.probs=predict(glm.fits,type="response")
+glm.probs[1:10]
+glm.pred=rep("0",400)
+glm.pred[glm.probs>.5]="1"
+table(glm.pred,admit)
+(29+253)/400 #Calculated from the Confusion Matrix
+mean(glm.pred==admit)
+train=(rank<4)
+data.4=data[!train,]
+dim(data.4)
+admit.4=admit[!train]
+glm.fits=glm(admit~gre+gpa+rank,data=data,family=binomial,subset=train) 
+glm.probs=predict(glm.fits,data.4,type="response")
+glm.pred=rep("0",67) 
+glm.pred[glm.probs>.5]="1" 
+```
+
+* * *
+Aliter
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+glm.pred=ifelse(glm.probs==.5, "1", "0")
+table(glm.pred,admit.4)
+mean(glm.pred==admit.4)
+mean(glm.pred!=admit.4)
+```
+
+* * * 
+Fit with four predictor variables
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+glm.fits=glm(admit~gre+gpa,data=data,family=binomial,subset=train) #Going to eliminate the variable - rank.
+glm.probs=predict(glm.fits,data.4,type="response")
+glm.pred=rep("0",67)
+glm.pred[glm.probs>.5]="1"
+table(glm.pred,admit.4)
+mean(glm.pred==admit.4)
+```
+
+### Logistic Regression on Heart dataset
+
+* * *
+Removing previously loaded objects from the environment
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+rm(list = ls())
+```
+
+* * *
+Loading the required packages
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+library(tidyverse)
+library(plotly)
+library(GGally)
+library(ggplot2)
+library(readr)
+library(dplyr)
+```
+
+* * *
+Importing the dataset
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+data <- read.csv("heart.csv")
+```
+
+* * *
+Inspecting the dataset
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+names(data)
+dim(data)
+summary(data)
+View(data)
+str(data)
+```
+
+* * *
+Checking for missing values, if any, for the given dataset
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+data %>% 
+  is.na() %>% 
+  colSums(is.na(data))
+```
+
+* * *
+Plot with pairs fn
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+pairs(data,col=data$target)
+```
+
+* * *
+Data analysis: Histogram plot
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+par(mar = rep(2, 4)) #To reduce the size of the margins
+par(mfrow=c(1,4))
+for(i in 1:13) {
+  hist(data[,i], main=names(data)[i])
+}
+```
+
+* * *
+Data analysis: Box plot
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+par(mar = rep(2, 4)) #To reduce the size of the margins
+par(mfrow=c(1,4))
+for(i in 1:13) {
+  boxplot(data[,i], main=names(data)[i])
+}
+# cor(data[,-14])
+```
+
+* * *
+To find correlation between every variable
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+library(corrplot)
+correlations <- cor(data[,1:13])
+corrplot(correlations, method="circle")
+attach(data)
+```
+
+* * *
+Logistic Regression glm = Generalised linear models
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+# baseline model
+table(target) # do not need data$target because we have used attach(data)
+165/303
+```
+
+* * *
+Splitting the dataset into train and test
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+library(caTools)
+#randomly split data
+set.seed(123)
+split=sample.split(target, SplitRatio = 0.75)
+# split
+```
+* * *
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+qualityTrain=subset(data,split == TRUE)
+qualityTest=subset(data,split == FALSE)
+nrow(qualityTrain)
+nrow(qualityTest)
+```
+
+* * *
+Logistic regression model
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+datasetlog=glm(target ~ .,data=qualityTrain,family = binomial)
+summary(datasetlog)
+```
+
+* * *
+Removing variables based on Significance Level using the backward method i.e. removing the least significant variables one by one. In this case, from the above significant codes we see that the least significant variables are 'ï..age', 'fbs', 'restecg', 'exang', and 'slope'
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+datasetlog2=glm(target ~ sex+cp+trestbps+chol+fbs+restecg+thalach+exang+oldpeak+slope+ca+thal,data=qualityTrain,family = binomial)
+summary(datasetlog2)
+```
+
+* * *
+Removing variables based on Significance Level using the backward method i.e. removing the least significant variables one by one. In this case, from the above significant codes we see that the least significant variables are 'ï..age', 'fbs', 'restecg', 'exang', and 'slope'
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+datasetlog3=glm(target ~ sex+cp+trestbps+chol+restecg+thalach+exang+oldpeak+slope+ca+thal,data=qualityTrain,family = binomial)
+summary(datasetlog3)
+```
+
+* * *
+Removing variables based on Significance Level using the backward method i.e. removing the least significant variables one by one. In this case, from the above significant codes we see that the least significant variables are 'ï..age', 'fbs', 'restecg', 'exang', and 'slope'
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+datasetlog4=glm(target ~ sex+cp+trestbps+chol+thalach+exang+oldpeak+slope+ca+thal,data=qualityTrain,family = binomial)
+summary(datasetlog4)
+```
+
+* * *
+Removing variables based on Significance Level using the backward method i.e. removing the least significant variables one by one. In this case, from the above significant codes we see that the least significant variables are 'ï..age', 'fbs', 'restecg', 'exang', and 'slope'
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+datasetlog5=glm(target ~ sex+cp+trestbps+chol+thalach+oldpeak+slope+ca+thal,data=qualityTrain,family = binomial)
+summary(datasetlog5)
+```
+
+* * *
+Removing variables based on Significance Level using the backward method i.e. removing the least significant variables one by one. In this case, from the above significant codes we see that the least significant variables are 'ï..age', 'fbs', 'restecg', 'exang', and 'slope'
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+datasetlog6=glm(target ~ sex+cp+trestbps+chol+thalach+oldpeak+ca+thal,data=qualityTrain,family = binomial)
+summary(datasetlog6)
+```
+
+* * *
+Applying Model after removing least significant variables.
+A general rule in machine learning is that the more features you have, the more likely your model will suffer from overfitting. Making predictions on training sets using datasetlog6
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+predictTrain=predict(datasetlog6,type="response")
+# predictTrain
+```
+
+* * *
+Accuracy
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+#Accuracy using a threshold of 0.7
+predictTest=predict(datasetlog6, newdata = qualityTest,type = "response")
+table(qualityTest$target,predictTest >=0.7)
+#accuracy
+(28+29)/75
+```
+Logistic regression model with all the variables and logistic regression model after removing less significant attributes performed best with an accuracy of testing 76%
+
+* * *
+We can use the confint function to obtain confidence intervals for the coefficient estimates.
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+## CIs using profiled log-likelihood
+confint(datasetlog6)
+```
+
+* * *
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+## CIs using standard errors
+confint.default(datasetlog6)
+```
+
+* * *
+We may also wish to see measures of how well our model fits. This can be particularly useful when comparing competing models. The output produced by summary(datasetlog6) included indices of fit (shown below the coefficients), including the null and deviance residuals and the AIC. One measure of model fit is the significance of the overall model. This test asks whether the model with predictors fits significantly better than a model with just an intercept (i.e., a null model). The test statistic is the difference between the residual deviance for the model with predictors and the null model. The test statistic is distributed chi-squared with degrees of freedom equal to the differences in degrees of freedom between the current and the null model (i.e., the number of predictor variables in the model). To find the difference in deviance for the two models (i.e., the test statistic) we can use the command:
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+with(datasetlog6, null.deviance - deviance)
+```
+
+* * *
+The degrees of freedom for the difference between the two models is equal to the number of predictor variables in the mode, and can be obtained using:
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+with(datasetlog6, df.null - df.residual)
+```
+
+* * *
+Finally, the p-value can be obtained using:
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+with(datasetlog6, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE))
+```
+
+* * *
+The chi-square of 158.1511 with 8 degrees of freedom and an associated p-value of less than 0.001 tells us that our model as a whole fits significantly better than an empty model. This is sometimes called a likelihood ratio test (the deviance residual is -2*log likelihood). To see the model’s log likelihood, we type:
+
+```{r, warning=FALSE, message=FALSE, tidy=TRUE}
+logLik(datasetlog6)
+```
+
+* * *
+**Conclusion:** \
+Logistic Regression has been successfully performed on Smarket, Admission Predict, binary_Admit and Heart dataset.
